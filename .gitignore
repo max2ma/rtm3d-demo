@@ -1,0 +1,11 @@
+bin/
+data/
+velmodels/
+kernel/
+*.log
+*.tar.gz
+*.gz
+*.xz
+*.7z
+*.zip
+*.bin
