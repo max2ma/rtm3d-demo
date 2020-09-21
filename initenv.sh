@@ -1,12 +1,12 @@
 #!/bin/bash
 
-daturl=""
+daturl="https://drive.google.com/file/d/1Ka-mo9sGddU6n7yQBLeTYppt9TtzJ-BA/view?usp=sharing"
 datfile="rtm3d-demo-data.tar.xz"
 datdir="data"
 echo "> Initializing DEMO environment..."
 
 echo "> Downloading demonstration data package..."
-#wget -f $daturl $datfile
+wget --no-check-certificate $daturl -O $datfile
 
 
 echo "> Extracting demonstration data..."
