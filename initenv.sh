@@ -16,7 +16,7 @@ tar -xvf $datfile
 echo "> Build CWP library for nplot command. Please, answer 'y' when prompted."
 curdir=`pwd`
 cd data/cwp 
-./buildcwp -y
+./buildcwp.sh -y
 
 cd $curdir
 
