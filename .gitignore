@@ -1,7 +1,7 @@
 bin/
 data/
+build/
 velmodels/
-kernel/
 *.log
 *.tar.gz
 *.gz
