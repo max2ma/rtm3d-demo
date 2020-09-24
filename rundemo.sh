@@ -49,8 +49,8 @@ build="y"
 jsonPath=""
 runscript="script/runcpu.sh"
 reportdir="data"
-# fpgakernel="data/kernel/hw/rtmforward_maxY128_maxZ512_b16_nPEZ4_nPEX2_nFSM2.xclbin"
-fpgakernel="data/kernel/sw_emu/rtmforward_maxY128_maxZ256_b16_nPEZ4_nPEX2_nFSM2.xclbin"
+fpgakernel="data/kernel/hw/rtmforward_maxY128_maxZ512_b16_nPEZ4_nPEX2_nFSM2.xclbin"
+# fpgakernel="data/kernel/sw_emu/rtmforward_maxY128_maxZ256_b16_nPEZ4_nPEX2_nFSM2.xclbin"
 while [ $# -gt 0 ]; do
   case "$1" in
     --target=*)

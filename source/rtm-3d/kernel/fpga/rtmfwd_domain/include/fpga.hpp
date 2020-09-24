@@ -184,13 +184,11 @@ class ForwardKernel {
                host_buffer_t<t_WideType>& p_p) {
         size_t l_cubeSize = m_cube / t_PEX / t_PEZ;
         unsigned int p_numChannels = (t_ChannelSize - 1 + l_cubeSize) / t_ChannelSize;
-
         vector<host_buffer_t<t_WideType> > l_pp0(p_numChannels);
         vector<host_buffer_t<t_WideType> > l_pp1(p_numChannels);
         vector<host_buffer_t<t_WideType> > l_p0(p_numChannels);
         vector<host_buffer_t<t_WideType> > l_p1(p_numChannels);
         vector<host_buffer_t<t_WideType> > l_v2dt2(p_numChannels);
-
         for (int i = 0; i < p_numChannels; i++) {
             size_t l_vectorSize = l_cubeSize >= t_ChannelSize ? t_ChannelSize : l_cubeSize;
             l_cubeSize -= t_ChannelSize;
@@ -204,22 +202,19 @@ class ForwardKernel {
             copy(m_v2dt2.begin() + i * t_ChannelSize, m_v2dt2.begin() + i * t_ChannelSize + l_vectorSize,
                  l_v2dt2[i].begin());
         }
-
         cl::Context m_Context = m_fpga->getContext();
         cl::CommandQueue m_CommandQueue = m_fpga->getCommandQueue();
+
 
         cl::Buffer d_coefx = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_coefx);
         cl::Buffer d_coefy = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_coefy);
         cl::Buffer d_coefz = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_coefz);
-
         cl::Buffer d_srcs = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_srcs[p_shot]);
-
         vector<cl::Buffer> d_v2dt2 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_ONLY, l_v2dt2, m_v2dt2_base);
         vector<cl::Buffer> d_p0 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_p0, m_p0_base);
         vector<cl::Buffer> d_p1 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_p1, m_p1_base);
         vector<cl::Buffer> d_pp0 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_pp0, m_pp0_base);
         vector<cl::Buffer> d_pp1 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_pp1, m_pp1_base);
-
         vector<cl::Memory> inBufVec, outBufVec;
 
         inBufVec.push_back(d_coefx);
@@ -289,7 +284,6 @@ class ForwardKernel {
 
         return elapsed.count();
     }
-
     /**
      * @brief run kernel, memory selection, HBC mode
      *

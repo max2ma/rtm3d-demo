@@ -63,14 +63,14 @@ void RTMFPGAPlatform::rtmForwardPropagation(
 {
 #ifdef RTM_ACC_FPGA
     host_buffer_t<RTM_wideType> l_snap0, l_snap1;
-    host_buffer_t<RTMData_t> l_upb;
+    host_buffer_t<RTMData_t> * l_upb = new host_buffer_t<RTMData_t>(upbGrid->size());
     int sx = shotDesc->getSource()->getX()+blen;
     int sy = shotDesc->getSource()->getY()+blen;
     int sz = shotDesc->getSource()->getZ()+blen;
 #ifdef __FPGATEST__
     readBin("debug/p.bin", v2dt2Grid.size()*sizeof(RTMData_t), l_snap0);
     readBin("debug/pp.bin", v2dt2Grid.size()*sizeof(RTMData_t), l_snap1);
-    readBin("debug/upb_out.bin", upbGrid->size()*sizeof(RTMData_t), l_upb);
+    readBin("debug/upb_out.bin", upbGrid->size()*sizeof(RTMData_t), *l_upb);
 #else
     RTM_PRINT("Running FPGA Foward Kernel......", rtmParam->verbose);
     /* saves intermediary files */
@@ -87,11 +87,12 @@ void RTMFPGAPlatform::rtmForwardPropagation(
     writeBin(rtmParam->tmpdir+"/taperz.bin", rtmParam->blen*sizeof(RTMData_t) ,rtmTaper->data());
     fwdKernel->loadData(rtmParam->tmpdir+"/");
     bool selF = (rtmParam->nt / RTM_FPGA_nFSM) % 2 == 0;
-    fwdKernel->run(selF, 0, sy, sx, l_snap0, l_snap1, l_upb);
+    fwdKernel->run(selF, 0, sy, sx, l_snap0, l_snap1, *l_upb);
 #endif
     converter<RTM_FPGA_nPEX, RTM_FPGA_nPEZ, RTMData_t>(plen_x, plen_y, plen_z, l_snap0.data(), snap0Grid->data());
     converter<RTM_FPGA_nPEX, RTM_FPGA_nPEZ, RTMData_t>(plen_x, plen_y, plen_z, l_snap1.data(), snap1Grid->data());
-    converter_upb<RTM_FPGA_nPEX, RTM_FPGA_nPEZ, RTM_FPGA_stOrder, RTMData_t>(plen_x, plen_y, rtmParam->ntstep, l_upb, upbGrid->data());
+    converter_upb<RTM_FPGA_nPEX, RTM_FPGA_nPEZ, RTM_FPGA_stOrder, RTMData_t>(plen_x, plen_y, 
+        rtmParam->ntstep, *l_upb, upbGrid->data());
     string upbFile;
     int unxe = upbGrid->getNX();
     int unye = upbGrid->getNY();
@@ -120,6 +121,7 @@ void RTMFPGAPlatform::rtmForwardPropagation(
         RTMCube<RTMData_t, RTMDevPtr_t> *snap0Grid,
         RTMCube<RTMData_t, RTMDevPtr_t> *snap1Grid)
 {
+
 #ifdef RTM_ACC_FPGA
     host_buffer_t<RTM_wideType> l_snap0, l_snap1;
     host_buffer_t<RTMData_t> l_upb;
@@ -160,5 +162,6 @@ void RTMFPGAPlatform::rtmForwardPropagation(
     remove(string(rtmParam->tmpdir+"/v2dt2.bin").c_str());
 
 #endif 
+
 }
 

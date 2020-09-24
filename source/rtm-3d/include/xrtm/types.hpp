@@ -46,18 +46,19 @@ class WideData {
     const t_DataType& operator[](int index) const { return m_data[index]; }
 };
 
-template <int t_PEX, int t_PEZ, typename t_DataType>
+template <size_t t_PEX, size_t t_PEZ, typename t_DataType>
 void converter(
-    int l_x, int l_y, int l_z, 
+    size_t l_x, size_t l_y, size_t l_z, 
     const WideData<WideData<t_DataType, t_PEX>, t_PEZ>* mem, 
     t_DataType * vec) {
-    int index = 0;
-    for (int i = 0; i < l_x / t_PEX; i++) {
-        for (int j = 0; j < l_y; j++) {
-            for (int k = 0; k < l_z / t_PEZ; k++) {
-                for (int pez = 0; pez < t_PEZ; pez++) {
-                    for (int pex = 0; pex < t_PEX; pex++) {
-                        vec[(i * t_PEX + pex) * l_y * l_z + j * l_z + k * t_PEZ + pez] = mem[index][pez][pex];
+    size_t index = 0;
+    for (size_t i = 0; i < l_x / t_PEX; i++) {
+        for (size_t j = 0; j < l_y; j++) {
+            for (size_t k = 0; k < l_z / t_PEZ; k++) {
+                for (size_t pez = 0; pez < t_PEZ; pez++) {
+                    for (size_t pex = 0; pex < t_PEX; pex++) {
+                        size_t offset0 = (i * t_PEX + pex) * l_y * l_z + j * l_z + k * t_PEZ + pez;
+                        vec[offset0] = mem[index][pez][pex];
                     }
                 }
                 index++;
@@ -66,18 +67,19 @@ void converter(
     }
 }
 
-template <int t_PEX, int t_PEZ, typename t_DataType>
+template <size_t t_PEX, size_t t_PEZ, typename t_DataType>
 void converter(
-    int l_x, int l_y, int l_z, 
+    size_t l_x, size_t l_y, size_t l_z, 
     t_DataType * vec, 
     WideData<WideData<t_DataType, t_PEX>, t_PEZ>* mem) {
-    int index = 0;
-    for (int i = 0; i < l_x / t_PEX; i++) {
-        for (int j = 0; j < l_y; j++) {
-            for (int k = 0; k < l_z / t_PEZ; k++) {
-                for (int pez = 0; pez < t_PEZ; pez++) {
-                    for (int pex = 0; pex < t_PEX; pex++) {
-                        mem[index][pez][pex] = vec[(i * t_PEX + pex) * l_y * l_z + j * l_z + k * t_PEZ + pez];
+    size_t index = 0;
+    for (size_t i = 0; i < l_x / t_PEX; i++) {
+        for (size_t j = 0; j < l_y; j++) {
+            for (size_t k = 0; k < l_z / t_PEZ; k++) {
+                for (size_t pez = 0; pez < t_PEZ; pez++) {
+                    for (size_t pex = 0; pex < t_PEX; pex++) {
+                        size_t offset0 = (i * t_PEX + pex) * l_y * l_z + j * l_z + k * t_PEZ + pez;
+                        mem[index][pez][pex] = vec[offset0];
                     }
                 }
                 index++;
@@ -85,18 +87,19 @@ void converter(
         }
     }
 }
-template <int t_PEX, int t_PEZ, typename t_DataType>
+template <size_t t_PEX, size_t t_PEZ, typename t_DataType>
 void converter(
-    int l_x, int l_y, int l_z, 
+    size_t l_x, size_t l_y, size_t l_z, 
     const WideData<WideData<t_DataType, t_PEX>, t_PEZ>* mem, 
     vector<t_DataType>& vec) {
-    int index = 0;
-    for (int i = 0; i < l_x / t_PEX; i++) {
-        for (int j = 0; j < l_y; j++) {
-            for (int k = 0; k < l_z / t_PEZ; k++) {
-                for (int pez = 0; pez < t_PEZ; pez++) {
-                    for (int pex = 0; pex < t_PEX; pex++) {
-                        vec[(i * t_PEX + pex) * l_y * l_z + j * l_z + k * t_PEZ + pez] = mem[index][pez][pex];
+    size_t index = 0;
+    for (size_t i = 0; i < l_x / t_PEX; i++) {
+        for (size_t j = 0; j < l_y; j++) {
+            for (size_t k = 0; k < l_z / t_PEZ; k++) {
+                for (size_t pez = 0; pez < t_PEZ; pez++) {
+                    for (size_t pex = 0; pex < t_PEX; pex++) {
+                        size_t offset0 = (i * t_PEX + pex) * l_y * l_z + j * l_z + k * t_PEZ + pez;
+                        vec[offset0] = mem[index][pez][pex];
                     }
                 }
                 index++;
@@ -105,18 +108,20 @@ void converter(
     }
 }
 
-template <int t_PEX, int t_PEZ, typename t_DataType>
+template <size_t t_PEX, size_t t_PEZ, typename t_DataType>
 void converter(
-    int l_x, int l_y, int l_z, 
+    size_t l_x, size_t l_y, size_t l_z, 
     const vector<t_DataType>& vec, 
     WideData<WideData<t_DataType, t_PEX>, t_PEZ>* mem) {
-    int index = 0;
-    for (int i = 0; i < l_x / t_PEX; i++) {
-        for (int j = 0; j < l_y; j++) {
-            for (int k = 0; k < l_z / t_PEZ; k++) {
-                for (int pez = 0; pez < t_PEZ; pez++) {
-                    for (int pex = 0; pex < t_PEX; pex++) {
-                        mem[index][pez][pex] = vec[(i * t_PEX + pex) * l_y * l_z + j * l_z + k * t_PEZ + pez];
+    size_t index = 0;
+    for (size_t i = 0; i < l_x / t_PEX; i++) {
+        for (size_t j = 0; j < l_y; j++) {
+            for (size_t k = 0; k < l_z / t_PEZ; k++) {
+                for (size_t pez = 0; pez < t_PEZ; pez++) {
+                    for (size_t pex = 0; pex < t_PEX; pex++) 
+                    {
+                        size_t offset0 = (i * t_PEX + pex) * l_y * l_z + j * l_z + k * t_PEZ + pez;
+                        mem[index][pez][pex] = vec[offset0];
                     }
                 }
                 index++;
@@ -129,16 +134,17 @@ void converter(
 template <typename T>
 using host_buffer_t = std::vector<T, aligned_allocator<T> >;
 
-template <int t_PEX, int t_PEZ, int t_Order, typename t_DataType>
-void converter_upb(int p_x, int p_y, int p_time, host_buffer_t<t_DataType>& pin, t_DataType* out) {
-        int index = 0;
-        for (int i = 0; i < p_time; i++){
-            for (int k = 0; k < p_x / t_PEX; k++){
-                for (int j = 0; j < p_y; j++){
-                    for (int po = 0; po < t_Order / 2; po++){
-                        for (int pe = 0; pe < t_PEX; pe++){
-                            out[i * p_x * p_y * t_Order / 2 + (k * t_PEX + pe) * p_y * t_Order / 2 +
-                                j * t_Order / 2 + po] = pin[index++];
+template <size_t t_PEX, size_t t_PEZ, size_t t_Order, typename t_DataType>
+void converter_upb(size_t p_x, size_t p_y, size_t p_time, host_buffer_t<t_DataType>& pin, t_DataType* out) {
+        size_t index = 0;
+        for (size_t i = 0; i < p_time; i++){
+            for (size_t k = 0; k < p_x / t_PEX; k++){
+                for (size_t j = 0; j < p_y; j++){
+                    for (size_t po = 0; po < t_Order / 2; po++){
+                        for (size_t pe = 0; pe < t_PEX; pe++){
+                            size_t offset0 = (i * p_x * p_y * t_Order / 2) + ((k * t_PEX + pe) * p_y * t_Order / 2) +
+                                (j * t_Order / 2 + po);
+                            out[offset0] = pin[index++];
                         }
                     }
                 }

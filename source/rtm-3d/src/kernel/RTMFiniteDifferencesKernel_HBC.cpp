@@ -79,6 +79,11 @@ void RTMHBCKernel::rtmMigrate(RTMShotDescriptor<RTMData_t, RTMDevPtr_t> &shotDes
 #endif
 
     KERNEL_STATE = RTMKernelState::RTM_KERNEL_STATE_BACKWARD;
+
+    /**!!!! Set CPU Platform for Backward Propagation !!!!**/
+    setCpuPlatform();
+    /**!!!! Set CPU Platform for Backward Propagation !!!!**/
+
     rtmHBCBackward(shotDescriptor, v2dt2Grid);
     KERNEL_STATE = RTMKernelState::RTM_KERNEL_STATE_IDLE;
     timepoint t1 = tic();

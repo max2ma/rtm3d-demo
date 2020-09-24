@@ -17,9 +17,12 @@ inputJson=$1
 build=$2
 binfile=bin/RTM3D.bin
 #build host
-$rootdir/script/buildhost.sh "off" "$build"
-if [ ! -f "$binfile" ]; then
-    exit 1
+if [ "$build" = "y" ]; then
+    rm $binfile > /dev/null 2>&1
+	$rootdir/script/buildhost.sh "off" "$build"
+	if [ ! -f "$binfile" ]; then
+	    exit 1
+	fi
 fi
 
 # run

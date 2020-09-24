@@ -48,8 +48,8 @@ float min(float a, float b){
 
 
 float randbetween(float v, float maxvel, float minvel, int dist, int range){
-	return randparabolicval(v, maxvel, minvel, dist, range);
-	// return randlinearval(v, dist, range);
+	//return randparabolicval(v, maxvel, minvel, dist, range);
+	return randlinearval(v, dist, range);
  }
 
 float randparabolicval(float v, float maxvel, float minvel, int dist, int range){

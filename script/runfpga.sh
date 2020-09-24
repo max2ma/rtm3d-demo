@@ -36,16 +36,22 @@ fi
 
 binfile=bin/RTM3D_FPGA.bin
 #build host
-./script/buildhost.sh "fpga" "$build"
-if [ ! -f "$binfile" ]; then
-    exit 1
+if [ "$build" = "y" ]; then
+    rm $binfile > /dev/null 2>&1
+    ./script/buildhost.sh "fpga" "$build"
+    if [ ! -f "$binfile" ]; then
+        exit 1
+    fi
 fi
 
 # run
 XPLATFORM="xilinx_u280_xdma_201920_3"
 if [ "$sdaflow" != "hw" ]; then
-echo "FUCK"
     export XCL_EMULATION_MODE=$sdaflow
 fi
 
 ./$binfile $inputJson $kernel
+
+# reset fpga device
+# echo "> Reset FPGA board:"
+# xbutil reset
