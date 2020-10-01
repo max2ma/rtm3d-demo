@@ -3,8 +3,10 @@
 #include <cstdlib>
 #include <stdio.h>
 #include <fstream>
-#include <algorithm>
-#include <vector>
+#include<vector> // for vector 
+#include<algorithm> // for copy() and assign() 
+#include<iterator> // for back_inserter 
+#include <Misc.hpp>
 
 using namespace std;
 
@@ -12,6 +14,8 @@ namespace grid
 {
 
 #define DEFAULT_PAGE_SIZE 4096
+
+
 /**
  * @brief Class GridException Inheritance of class exception
  * @see RTMException.hpp
@@ -53,50 +57,51 @@ public:
     {
         return what_msg.c_str();
     }
-
-    
+ 
 };
 
 /**
  * @brief Class Grid
- * @tparam GridData_type 
+ * @tparam GridData_t 
  */
-template<typename GridData_type >
+template<typename GridData_t >
 class Grid
 {
 protected:
-    GridData_type * grid = nullptr;
+    HostBuffer_t<GridData_t> *gridBuffer=nullptr;
+    // GridData_t * grid = nullptr;
 public:
     size_t gridSize  = 0; /// total size
-    GridData_type MAXVAL;
-    GridData_type MINVAL;
+    GridData_t MAXVAL;
+    GridData_t MINVAL;
     /**
      * @brief Construct a new Grid object
      */
     Grid(){
-        grid = nullptr;
+        // grid = nullptr;
         gridSize = 0;
-        MAXVAL = static_cast<GridData_type>(-10000000000.);
-        MINVAL = static_cast<GridData_type>(10000000000.);
+        gridBuffer = new HostBuffer_t<GridData_t>(1);
+        MAXVAL = static_cast<GridData_t>(-10000000000.);
+        MINVAL = static_cast<GridData_t>(10000000000.);
     }
 
     Grid(size_t _size)
     {
-        gridSize = _size;
-        grid = allocGrid(gridSize);
-        //grid = new GridData_type[_size];
-        MAXVAL = static_cast<GridData_type>(-10000000000.);
-        MINVAL = static_cast<GridData_type>(10000000000.);
+        gridBuffer = new HostBuffer_t<GridData_t>(1);
+        Grid<GridData_t>::resizeGrid(_size);
+        //grid = new GridData_t[_size];
+        MAXVAL = static_cast<GridData_t>(-10000000000.);
+        MINVAL = static_cast<GridData_t>(10000000000.);
     }
 
     /**
      * @brief Construct a new Grid object
      * @param g
      */
-    Grid(const Grid<GridData_type> &g)
+    Grid(const Grid<GridData_t> &g)
     {
-        gridSize = g.size();
-        grid = allocGrid(gridSize);
+        gridBuffer = new HostBuffer_t<GridData_t>(1);
+        Grid<GridData_t>::resizeGrid(g.size());
         MAXVAL = g.MAXVAL;
         MINVAL = g.MINVAL;
         for (size_t i0 = 0; i0 < size; i0++)
@@ -109,20 +114,17 @@ public:
      */
     ~Grid()
     {
-        // if(grid!=nullptr){
-        //     free(grid);
-        //     grid = nullptr;
-        // }
+        resizeGrid(0);
+        delete gridBuffer;
     }
     /**
      * @brief  Assignment operator
-     * @param g  reference to Grid<GridData_type>
+     * @param g  reference to Grid<GridData_t>
      * @return Grid& 
      */
-    Grid &operator=(const Grid<GridData_type> &g)
+    Grid &operator=(const Grid<GridData_t> &g)
     {
-        gridSize = g.size();
-        grid = allocGrid(gridSize);
+        Grid<GridData_t>::resizeGrid(g.size());
         MAXVAL = g.MAXVAL;
         MINVAL = g.MINVAL;
         for (int i0 = 0; i0 < size; i0++)
@@ -131,36 +133,44 @@ public:
         }
         return *this;
     }
-    GridData_type &operator[](int x) const
+    GridData_t &operator[](int x) const
     {
-        return Grid<GridData_type>::grid[x];
+        // return Grid<GridData_t>::grid[x];
+        return Grid<GridData_t>::gridBuffer->at(x);
     }
-    GridData_type *data() const
+    GridData_t *data() const
     {
-        return Grid<GridData_type>::grid;
+        //return Grid<GridData_t>::grid;
+        return Grid<GridData_t>::gridBuffer->data();
     }
     size_t size() const
     {
         return gridSize;
     }
 
+    HostBuffer_t<GridData_t> & getGridBuffer(){
+        return *Grid<GridData_t>::gridBuffer;
+        // return gridBuffer;
+    }
     /**
      * @brief Get the By Offset object
      * @param offset 
      * @return T& 
      */
-    GridData_type &getByOffset(size_t offset) const
+    GridData_t &getByOffset(size_t offset) const
     {
-        return Grid<GridData_type>::grid[offset];
+        // return Grid<GridData_t>::grid[offset];
+        return Grid<GridData_t>::gridBuffer->at(offset);
     }
     /**
      * @brief Set the By Offset object
      * @param offset 
      * @param val 
      */
-    void setByOffset(size_t offset, GridData_type val)
+    void setByOffset(size_t offset, GridData_t val)
     {
-        Grid<GridData_type>::grid[offset] = val;
+        // Grid<GridData_t>::grid[offset] = val;
+        Grid<GridData_t>::gridBuffer->at(offset)  = val;
     }
 
     /**
@@ -168,12 +178,14 @@ public:
      *        with 'val'. Does not update device buffers.
      * @param val 
      */
-    void fill(GridData_type val)
+    void fill(GridData_t val)
     {
         // std::fill(grid->begin(), grid->end(), val);
         size_t k;
-        for (k=0; k<gridSize; k++)
-            Grid<GridData_type>::grid[k] = val;
+        for (k=0; k<gridSize; k++){
+            //Grid<GridData_t>::grid[k] = val;
+            Grid<GridData_t>::gridBuffer->at(k) = val;
+        }
     }
     /**
      * @brief Set the Max Min object
@@ -183,13 +195,13 @@ public:
         size_t i0 = 0;
         for (i0 = 0; i0 < gridSize; i0++)
         {
-            if (Grid<GridData_type>::grid[i0] >= MAXVAL)
+            if (Grid<GridData_t>::gridBuffer->at(i0) >= MAXVAL)
             {
-                MAXVAL = Grid<GridData_type>::grid[i0];
+                MAXVAL = Grid<GridData_t>::gridBuffer->at(i0);
             }
-            if (Grid<GridData_type>::grid[i0] <= MINVAL)
+            if (Grid<GridData_t>::gridBuffer->at(i0) <= MINVAL)
             {
-                MINVAL = Grid<GridData_type>::grid[i0];
+                MINVAL = Grid<GridData_t>::gridBuffer->at(i0);
             }
         }
     }
@@ -197,20 +209,20 @@ public:
      * @brief Function multiply()
      * @param m
      */
-    void multiplyBy(GridData_type m)
+    void multiplyBy(GridData_t m)
     {
         size_t i0 = 0;
         for (i0 = 0; i0 < gridSize; i0++)
         {
-            Grid<GridData_type>::grid[i0] = Grid<GridData_type>::grid[i0] * m;
+            Grid<GridData_t>::gridBuffer->at(i0) *= m;
         }
     }
 
-    void subtractBy(Grid<GridData_type> & _s){
+    void subtractBy(Grid<GridData_t> & _s){
         size_t i0 = 0;
         for (i0 = 0; i0 < gridSize; i0++)
         {
-            Grid<GridData_type>::grid[i0] -= _s.getByOffset(i0);
+            Grid<GridData_t>::gridBuffer->at(i0) -= _s.getByOffset(i0);
         }
     }
 
@@ -218,28 +230,16 @@ public:
         size_t i0 = 0;
         for (i0 = 0; i0 < gridSize; i0++)
         {
-            Grid<GridData_type>::grid[i0] = Grid<GridData_type>::grid[i0] * Grid<GridData_type>::grid[i0];
+            Grid<GridData_t>::gridBuffer->at(i0) *= Grid<GridData_t>::gridBuffer->at(i0);
         }
     }
 
-    /** aligned alloc **/
-    GridData_type* allocGrid(const size_t _size) {
-        void* ptr = nullptr;
-        //if (posix_memalign(&ptr, DEFAULT_PAGE_SIZE, _size * sizeof(GridData_type))) throw std::bad_alloc();
-#ifdef RTM_ACC_FPGA
-        if(_size > DEFAULT_PAGE_SIZE){
-            ptr = aligned_alloc(DEFAULT_PAGE_SIZE, _size * sizeof(GridData_type));
-        }else{
-            // ptr = malloc(_size * sizeof(GridData_type));
-            ptr = static_cast<GridData_type *>(new GridData_type[_size]);
-        }
-#else
-        ptr = static_cast<GridData_type *>(new GridData_type[_size]);
-#endif
-        if(ptr==nullptr)throw std::bad_alloc();
-        return static_cast<GridData_type *>(ptr);
-        
+    void resizeGrid(const size_t _size){
+        Grid<GridData_t>::gridBuffer->resize(_size);
+        // Grid<GridData_t>::grid = Grid<GridData_t>::gridBuffer->data();
+        Grid<GridData_t>::gridSize = _size;
     }
+
 
     /**
      * @brief Function loadFromFile()
@@ -254,7 +254,7 @@ public:
             GridException ex(msg);
             throw ex; 
         }
-        vfile.read(reinterpret_cast<char *>(this->data()), this->size() * sizeof(GridData_type));
+        vfile.read(reinterpret_cast<char *>(Grid<GridData_t>::gridBuffer->data()), this->size() * sizeof(GridData_t));
         vfile.close();
     }
     /**
@@ -273,7 +273,7 @@ public:
             throw ex; 
         }
         vfile.seekg(cnt * _size, ios::beg);
-        vfile.read(reinterpret_cast<char *>(this->data()), this->size() * sizeof(GridData_type));
+        vfile.read(reinterpret_cast<char *>(Grid<GridData_t>::gridBuffer->data()), this->size() * sizeof(GridData_t));
         vfile.close();
     }
     /**
@@ -289,7 +289,8 @@ public:
             GridException ex(msg);
             throw ex; 
         }
-        vfile.write(reinterpret_cast<char *>(this->data()), this->size() * sizeof(GridData_type));
+        //vfile.write(reinterpret_cast<char *>(Grid<GridData_t>::gridBuffer->data()), this->size() * sizeof(GridData_t));
+        vfile.write(reinterpret_cast<char *>(Grid<GridData_t>::gridBuffer->data()), this->size() * sizeof(GridData_t));
         vfile.close();
     }
     /**
@@ -305,7 +306,7 @@ public:
             GridException ex(msg);
             throw ex; 
         }
-        vfile.write(reinterpret_cast<char *>(grid), gridSize * sizeof(GridData_type));
+        vfile.write(reinterpret_cast<char *>(Grid<GridData_t>::gridBuffer->data()), gridSize * sizeof(GridData_t));
         vfile.close();
     }
     /**
@@ -314,42 +315,27 @@ public:
      * @param len 
      */
     void initGrid(size_t _size){
-        //delete grid;
-        destroyGrid();
-        gridSize = _size;
-        grid = allocGrid(_size);
+        resizeGrid(_size);
     }
     /**
      * @brief Function destroyGrid()
      */
     void destroyGrid(){
-        if(grid!=nullptr){
-#ifdef RTM_ACC_FPGA
-            free(grid);
-#else
-            delete grid;
-#endif
-            grid = nullptr;
-        }
+
+        Grid<GridData_t>::gridBuffer->resize(0);
         gridSize = 0;
     }
 
     /**
      * @brief Function destroyGrid()
      */
-    void destroyGrid(GridData_type * l_grid){
-        if(l_grid!=nullptr){
-#ifdef RTM_ACC_FPGA
-            free(l_grid);
-#else
-            delete l_grid;
-#endif
-            l_grid = nullptr;
-        }
+    void destroyGrid(GridData_t * l_grid){
+        l_grid->resize(0);
     }
 
-    void copyData(Grid<GridData_type> &_from){
-        memcpy(Grid<GridData_type>::data(), _from.data(), static_cast<size_t>(gridSize*sizeof(GridData_type)));
+    void copyData(Grid<GridData_t> &_from){
+        // Copying vector by copy function 
+        Grid<GridData_t>::getGridBuffer().assign(_from.getGridBuffer().begin(), _from.getGridBuffer().end());
     }
 };
 } // namespace grid

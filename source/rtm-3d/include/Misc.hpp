@@ -16,7 +16,8 @@
 #include <chrono>
 #include <string.h>
 #include <algorithm>
-
+#include <vector>
+#include <chrono>
 
 /**
  * @brief Functions declaration  
@@ -27,6 +28,23 @@ typedef std::chrono::milliseconds 			milliseconds;
 typedef std::chrono::seconds	 			seconds;
 typedef Clock::time_point 					timepoint;
 
+
+template <typename T>
+struct rtm_aligned_allocator {
+    using value_type = T;
+    T* allocate(std::size_t num) {
+        void* ptr = nullptr;
+        if (posix_memalign(&ptr, 4096, num * sizeof(T))) throw std::bad_alloc();
+        return reinterpret_cast<T*>(ptr);
+    }
+    void deallocate(T* p, std::size_t num) { free(p); }
+};
+
+template <typename T>
+using HostBuffer_t = std::vector<T, rtm_aligned_allocator<T> >;
+
+template<typename T>
+HostBuffer_t<T> & SLICE(HostBuffer_t<T> &v, int m, int n);
 
 /**
  * @brief Maximum value between two values

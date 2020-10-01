@@ -52,7 +52,7 @@ void RTMHBCKernel::destroyKernel()
     if(hbcKernelInitialized){
         RTMFiniteDifferencesKernel::destroyKernel();
         if(upbGrid!=nullptr)delete upbGrid;
-        platform->destroyRTMPlatform();
+        defaultPlatform->destroyRTMPlatform();
         hbcKernelInitialized = false;
     }
 }
@@ -69,7 +69,7 @@ void RTMHBCKernel::rtmMigrate(RTMShotDescriptor<RTMData_t, RTMDevPtr_t> &shotDes
     KERNEL_STATE = RTMKernelState::RTM_KERNEL_STATE_FORWARD;
 #ifdef RTM_ACC_FPGA
     timepoint fwd_st=tic();
-    RTMFPGAPlatform * fpgaPlatform = dynamic_cast<RTMFPGAPlatform *>(platform);
+    RTMFPGAPlatform * fpgaPlatform = dynamic_cast<RTMFPGAPlatform *>(accPlatform);
     fpgaPlatform->rtmForwardPropagation(&shotDescriptor, stencil, rtmTaper, 
     v2dt2Grid, snap0, snap1, upbGrid);
     report->rtmForwardTime += elapsed_s(fwd_st, toc());
@@ -145,22 +145,22 @@ void RTMHBCKernel::rtmHBCForward(RTMShotDescriptor<RTMData_t, RTMDevPtr_t> &shot
             // // swap pointers
             RTMGRID_SWAP(&pSrcGrid, &ppSrcGrid);
             // attenuate borders
-            platform->rtmTaperUpperBorders(pSrcGrid, rtmTaper);
-            platform->rtmTaperUpperBorders(ppSrcGrid, rtmTaper);
+            defaultPlatform->rtmTaperUpperBorders(pSrcGrid, rtmTaper);
+            defaultPlatform->rtmTaperUpperBorders(ppSrcGrid, rtmTaper);
 
             // propagate wave for one timestep (t+dt)
             timepoint t2 = tic();
-            platform->rtmStep(pSrcGrid, ppSrcGrid, stencil, v2dt2Grid);
+            defaultPlatform->rtmStep(pSrcGrid, ppSrcGrid, stencil, v2dt2Grid);
 
             // update propagation function time report
             report->propagFuncTime += elapsed_s(t2, toc());
             report->propagFuncCounter++;
 
             // apply source
-            platform->rtmApplySource(ppSrcGrid, shotDescriptor.getSource(), it);
+            defaultPlatform->rtmApplySource(ppSrcGrid, shotDescriptor.getSource(), it);
 
             // save upper border
-            platform->rtmSaveUpperBorder(ppSrcGrid, upbGrid, lt);
+            defaultPlatform->rtmSaveUpperBorder(ppSrcGrid, upbGrid, lt);
 
             // update snapshots file
             if (rtmParam->save_snapshots && (it % rtmParam->snapshot_step) == 0)
@@ -293,35 +293,35 @@ void RTMHBCKernel::rtmHBCBackward(RTMShotDescriptor<RTMData_t, RTMDevPtr_t> &sho
             {
                 // propagate source wave for one timestep (t+dt)
                 t1 = tic();
-                platform->rtmStep(pSrcGrid, ppSrcGrid, stencil, v2dt2Grid);
+                defaultPlatform->rtmStep(pSrcGrid, ppSrcGrid, stencil, v2dt2Grid);
 
                 // update propagation function time report
                 report->propagFuncTime += elapsed_s(t1, toc());
                 report->propagFuncCounter++;
 
                 // restore upper border upb to src grid
-                platform->rtmRestoreUpperBorder(ppSrcGrid, upbGrid, lt);
+                defaultPlatform->rtmRestoreUpperBorder(ppSrcGrid, upbGrid, lt);
             }
             // swap pointers
             RTMGRID_SWAP(&pSrcGrid, &ppSrcGrid);
 
             // attenuate receiver grid borders
-            platform->rtmTaperUpperBorders(pRcvGrid, rtmTaper);
-            platform->rtmTaperUpperBorders(ppRcvGrid, rtmTaper);
+            defaultPlatform->rtmTaperUpperBorders(pRcvGrid, rtmTaper);
+            defaultPlatform->rtmTaperUpperBorders(ppRcvGrid, rtmTaper);
 
             // propagate receiver wave for one timestep (t-dt)
             t1 = tic();
-            platform->rtmStep(pRcvGrid, ppRcvGrid, stencil, v2dt2Grid);
+            defaultPlatform->rtmStep(pRcvGrid, ppRcvGrid, stencil, v2dt2Grid);
 
             // update propagation function time report
             report->propagFuncTime += elapsed_s(t1, toc());
             report->propagFuncCounter++;
 
             // restore receiver energy
-            platform->rtmRestoreReceiverData(ppRcvGrid, rcvGrid, lt);
+            defaultPlatform->rtmRestoreReceiverData(ppRcvGrid, rcvGrid, lt);
 
             // apply image condition */
-            platform->rtmImageCondition(imgGrid, pSrcGrid, ppRcvGrid);
+            defaultPlatform->rtmImageCondition(imgGrid, pSrcGrid, ppRcvGrid);
 
             // update snapshots file
             if (rtmParam->save_snapshots && (it % rtmParam->snapshot_step) == 0)

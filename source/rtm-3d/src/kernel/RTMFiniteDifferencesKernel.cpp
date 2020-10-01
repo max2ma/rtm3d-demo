@@ -6,18 +6,18 @@
 
 RTMFiniteDifferencesKernel::RTMFiniteDifferencesKernel(RTMParam &_param, RTMProcessLimits &_pLimits)
     : RTMDistributedGridKernel{_param, _pLimits}
-{ // create kernel platform instance
+{ // create kernel defaultPlatform instance
         accPlatform = new RTMAccPlatform(*rtmParam, processLimits);
         accPlatform->initRTMPlatform();
-        // create additional CPU platform for verification
+        // create additional CPU defaultPlatform for verification
         cpuPlatform = new RTMCPUPlatform(*rtmParam, processLimits);
         cpuPlatform->initRTMPlatform();
 #ifdef RTM_ACC
         usingAcc = true;
-        platform = accPlatform;
+        defaultPlatform = accPlatform;
 #else
         usingAcc = false;
-        platform = cpuPlatform;
+        defaultPlatform = cpuPlatform;
 #endif
 }
 
@@ -106,9 +106,13 @@ void RTMFiniteDifferencesKernel::rtmModel(RTMShotDescriptor<RTMData_t, RTMDevPtr
     try
     {
         timepoint t0 = tic(), t1;
-
-        //rtmAcousticFiniteDiffModeling(shotDescriptor, v2dt2Grid);
-        rtmAcousticFiniteDiffModeling_RemoveDirectWave(shotDescriptor, v2dt2Grid);
+#ifdef RTM_ACC_FPGA
+        RTMFPGAPlatform * fpgaPlatform = dynamic_cast<RTMFPGAPlatform *>(accPlatform);
+        fpgaPlatform->rtmSeismicModeling(&shotDescriptor,stencil,rtmTaper,v2dt2Grid);
+#else
+        rtmAcousticFiniteDiffModeling(shotDescriptor, v2dt2Grid);
+        //rtmAcousticFiniteDiffModeling_RemoveDirectWave(shotDescriptor, v2dt2Grid);
+#endif
 
         report->rtmModelingTime += elapsed_s(t0, toc());
         report->rtmModelingCounter++;
@@ -173,27 +177,31 @@ void RTMFiniteDifferencesKernel::rtmAcousticFiniteDiffModeling(RTMShotDescriptor
             RTMGRID_SWAP(&pSrcGrid, &ppSrcGrid);
 
             // attenuate borders
-            platform->rtmTaperAllBorders(pSrcGrid, rtmTaper);
-            platform->rtmTaperAllBorders(ppSrcGrid, rtmTaper);
+            defaultPlatform->rtmTaperAllBorders(pSrcGrid, rtmTaper);
+            defaultPlatform->rtmTaperAllBorders(ppSrcGrid, rtmTaper);
 
             // propagate wave for one timestep
             timepoint t2 = tic();
-            platform->rtmStep(pSrcGrid, ppSrcGrid, stencil, v2dt2Grid);
+            defaultPlatform->rtmStep(pSrcGrid, ppSrcGrid, stencil, v2dt2Grid);
 
             // update propagation function time report
             report->propagFuncTime += elapsed_s(t2, toc());
             report->propagFuncCounter++;
 
             // apply source
-            platform->rtmApplySource(ppSrcGrid, shotDescriptor.getSource(), it);
+            defaultPlatform->rtmApplySource(ppSrcGrid, shotDescriptor.getSource(), it);
 
             // save reciever grid
-            platform->rtmSaveReceiverData(ppSrcGrid, rcvGrid, lt);
+            defaultPlatform->rtmSaveReceiverData(ppSrcGrid, rcvGrid, lt);
 
             // update snapshots file
             if (rtmParam->save_snapshots && (it % rtmParam->snapshot_step) == 0)
             {
                 /* For now, snapshots are always on X dimension*/
+                if (isUsingAcc())
+                {
+                    ppSrcGrid->moveFromDevice();
+                }
                 RTMPlane<RTMData_t, RTMDevPtr_t> *secGrid = ppSrcGrid->get2DSection(sx + blen, RTMDim::Xdim);
                 secGrid->appendTofile(snapshotsFile);
                 delete secGrid;
@@ -203,7 +211,7 @@ void RTMFiniteDifferencesKernel::rtmAcousticFiniteDiffModeling(RTMShotDescriptor
 
             // print kernel progress
             printKernelProgress("+ RTM_MOD", sx, sy, sz, it, nt, elapsed_s(t0, toc()));
-        }
+        } // for (lt...
         // join all distributed RCV grids, if any.
         // in case an acc is used, get the latest version from device
         if (isUsingAcc())
@@ -231,7 +239,7 @@ void RTMFiniteDifferencesKernel::rtmAcousticFiniteDiffModeling(RTMShotDescriptor
         {
             rcvGrid->saveToFile(seismFile);
         }
-    } // for (int it = 0; it<nt; it++)
+    } // for (itstep ...
 }
 
 void RTMFiniteDifferencesKernel::joinDistributedPSGrids()
@@ -356,27 +364,27 @@ void RTMFiniteDifferencesKernel::rtmAcousticFiniteDiffModeling_RemoveDirectWave(
                 RTMGRID_SWAP(&pRcvGrid, &ppRcvGrid);
 
                 // attenuate borders
-                platform->rtmTaperAllBorders(pSrcGrid, rtmTaper);
-                platform->rtmTaperAllBorders(ppSrcGrid, rtmTaper);
-                platform->rtmTaperAllBorders(pRcvGrid, rtmTaper);
-                platform->rtmTaperAllBorders(ppRcvGrid, rtmTaper);
+                defaultPlatform->rtmTaperAllBorders(pSrcGrid, rtmTaper);
+                defaultPlatform->rtmTaperAllBorders(ppSrcGrid, rtmTaper);
+                defaultPlatform->rtmTaperAllBorders(pRcvGrid, rtmTaper);
+                defaultPlatform->rtmTaperAllBorders(ppRcvGrid, rtmTaper);
 
                 // propagate wave for one timestep
                 timepoint t2 = tic();
-                platform->rtmStep(pSrcGrid, ppSrcGrid, stencil, v2dt2Grid);
-                //platform->rtmStep(pRcvGrid, ppRcvGrid, stencil, *filterV2dt2Grid);
+                defaultPlatform->rtmStep(pSrcGrid, ppSrcGrid, stencil, v2dt2Grid);
+                //defaultPlatform->rtmStep(pRcvGrid, ppRcvGrid, stencil, *filterV2dt2Grid);
 
                 // update propagation function time report
                 report->propagFuncTime += elapsed_s(t2, toc());
                 report->propagFuncCounter++;
 
                 // apply source
-                platform->rtmApplySource(ppSrcGrid, shotDescriptor.getSource(), it);
-                platform->rtmApplySource(ppRcvGrid, shotDescriptor.getSource(), it);
+                defaultPlatform->rtmApplySource(ppSrcGrid, shotDescriptor.getSource(), it);
+                defaultPlatform->rtmApplySource(ppRcvGrid, shotDescriptor.getSource(), it);
 
                 // save reciever grid
-                platform->rtmSaveReceiverData(ppSrcGrid, rcvGrid, lt);
-                platform->rtmSaveReceiverData(ppRcvGrid, &filterRcvGrid, lt);
+                defaultPlatform->rtmSaveReceiverData(ppSrcGrid, rcvGrid, lt);
+                defaultPlatform->rtmSaveReceiverData(ppRcvGrid, &filterRcvGrid, lt);
 
                 // update snapshots file
                 if (rtmParam->save_snapshots && (it % rtmParam->snapshot_step) == 0)

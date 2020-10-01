@@ -197,7 +197,8 @@ class RTMDomain : public Stencil3D<t_DataType, t_Order, t_MaxDimZ, t_MaxDimY, t_
         }
     }
 
-    void extractUPB(hls::stream<t_InType>& p_pin, hls::stream<t_InType>& p_pout, hls::stream<t_UpbInType>& p_upb) {
+    void extractUPB(hls::stream<t_InType>& p_pin, hls::stream<t_InType>& p_pout, hls::stream<t_UpbInType>& p_upb) 
+    {
         t_UpbType l_upb;
         for (int i = 0, j = 0, k = 0, t = 0; t < this->m_cube; t++) {
 #pragma HLS PIPELINE
@@ -277,7 +278,8 @@ class RTMDomain : public Stencil3D<t_DataType, t_Order, t_MaxDimZ, t_MaxDimY, t_
     }
 
     template <unsigned int t_NumStream>
-    void saveUpb(int p_t, hls::stream<t_UpbInType> p_s[t_NumStream], t_UpbInType* p_mem) {
+    void saveUpb(int p_t, hls::stream<t_UpbInType> p_s[t_NumStream], t_UpbInType* p_mem) 
+    {
         int l_pSize = m_domain.m_x * m_domain.m_y / t_PEX;
         int l_n = m_domain.m_x * m_domain.m_dataDim / t_PEX;
         int l_totalSize = l_n * t_NumStream;

@@ -30,8 +30,7 @@ using namespace std;
  * @brief class FPGA, ForwardKernel and BackwardKernel are defined here.
  */
 
-template <typename T>
-using host_buffer_t = std::vector<T, aligned_allocator<T> >;
+
 
 /**
  * @brief class FPGA is used to manage FPGA info
@@ -56,7 +55,7 @@ class FPGA {
 
     template <typename T>
     vector<cl::Buffer> createDeviceBuffer(cl_mem_flags p_flags,
-                                          const vector<host_buffer_t<T> >& p_buffer,
+                                          const vector<HostBuffer_t<T> >& p_buffer,
                                           size_t p_base_channel) const {
         int p_hbm_pc = p_buffer.size();
         vector<cl::Buffer> l_buffer(p_hbm_pc);
@@ -78,7 +77,7 @@ class FPGA {
     }
 
     template <typename T>
-    cl::Buffer createDeviceBuffer(cl_mem_flags p_flags, const host_buffer_t<T>& p_buffer) const {
+    cl::Buffer createDeviceBuffer(cl_mem_flags p_flags, const HostBuffer_t<T>& p_buffer) const {
         size_t l_bufferSize = sizeof(T) * p_buffer.size();
         cl_int err;
         cl::Buffer buffer =
@@ -120,7 +119,6 @@ class ForwardKernel {
                   size_t p_yb,
                   size_t p_xb,
                   size_t p_time,
-                  size_t p_shots,
                   size_t p_v2dt2_base = 0,
                   size_t p_p0_base = 0,
                   size_t p_p1_base = 0,
@@ -138,9 +136,8 @@ class ForwardKernel {
         m_yb = p_yb;
         m_xb = p_xb;
         m_time = p_time;
-        m_shots = p_shots;
 
-        m_srcs.resize(m_shots);
+        m_src.resize(p_time);// = new HostBuffer_t<t_DataType>(p_time);
         m_v2dt2.resize(m_cube / t_PEX / t_PEZ);
 
         m_v2dt2_base = p_v2dt2_base;
@@ -148,49 +145,19 @@ class ForwardKernel {
         m_pp1_base = p_pp1_base;
         m_p0_base = p_p0_base;
         m_p1_base = p_p1_base;
+
+        l_cubeSize = m_cube / t_PEX / t_PEZ;
+        p_numChannels = (t_ChannelSize - 1 + l_cubeSize) / t_ChannelSize;
     }
 
-    void loadData(const string filePath) {
-        vector<t_DataType> l_v2dt2;
-        readBin(filePath + "v2dt2.bin", sizeof(t_DataType) * m_cube, l_v2dt2);
-        converter<t_PEX, t_PEZ>(m_x, m_y, m_z, l_v2dt2, m_v2dt2.data());
-        for (size_t s = 0; s < m_shots; s++)
-            readBin(filePath + "src_s" + to_string(s) + ".bin", sizeof(t_DataType) * m_time, m_srcs[s]);
-        readBin(filePath + "taperx.bin", sizeof(t_DataType) * m_xb, m_taperx);
-        readBin(filePath + "tapery.bin", sizeof(t_DataType) * m_yb, m_tapery);
-        readBin(filePath + "taperz.bin", sizeof(t_DataType) * m_zb, m_taperz);
-        readBin(filePath + "coefx.bin", sizeof(t_DataType) * (t_Order + 1), m_coefx);
-        readBin(filePath + "coefy.bin", sizeof(t_DataType) * (t_Order + 1), m_coefy);
-        readBin(filePath + "coefz.bin", sizeof(t_DataType) * (t_Order + 1), m_coefz);
-    }
-
-    /**
-     * @brief run kernel, memory selection, RBC mode
-     *
-     * @param p_sel, memory port selection
-     *
-     * @param p_shot, shot id
-     * @param p_sz, shot z coordinate
-     * @param p_sy, shot y coordinate
-     * @param p_sx, shot x coordinate
-     *
-     * @param p_p, seismic snapshot
-     */
-    double run(const bool p_sel,
-               size_t p_shot,
-               size_t p_sy,
-               size_t p_sx,
-               host_buffer_t<t_WideType>& p_pp,
-               host_buffer_t<t_WideType>& p_p) 
+    void createDeviceBuffers(size_t upbSize=1)
     {
-        size_t l_cubeSize = m_cube / t_PEX / t_PEZ;
-        size_t p_numChannels = (t_ChannelSize - 1 + l_cubeSize) / t_ChannelSize;
-
-        vector<host_buffer_t<t_WideType> > l_pp0(p_numChannels);
-        vector<host_buffer_t<t_WideType> > l_pp1(p_numChannels);
-        vector<host_buffer_t<t_WideType> > l_p0(p_numChannels);
-        vector<host_buffer_t<t_WideType> > l_p1(p_numChannels);
-        vector<host_buffer_t<t_WideType> > l_v2dt2(p_numChannels);
+        l_pp0.resize(p_numChannels);
+        l_pp1.resize(p_numChannels);
+        l_p0.resize(p_numChannels);
+        l_p1.resize(p_numChannels);
+        l_v2dt2.resize(p_numChannels);
+        m_upb = new HostBuffer_t<t_DataType>(upbSize);
 
         for (int i = 0; i < p_numChannels; i++) {
             size_t l_vectorSize = l_cubeSize >= t_ChannelSize ? t_ChannelSize : l_cubeSize;
@@ -206,91 +173,44 @@ class ForwardKernel {
                  l_v2dt2[i].begin());
         }
 
-        cl::Context m_Context = m_fpga->getContext();
-        cl::CommandQueue m_CommandQueue = m_fpga->getCommandQueue();
-
-        cl::Buffer d_coefx = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_coefx);
-        cl::Buffer d_coefy = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_coefy);
-        cl::Buffer d_coefz = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_coefz);
-
-        cl::Buffer d_srcs = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_srcs[p_shot]);
-
-        vector<cl::Buffer> d_v2dt2 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_ONLY, l_v2dt2, m_v2dt2_base);
-        vector<cl::Buffer> d_p0 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_p0, m_p0_base);
-        vector<cl::Buffer> d_p1 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_p1, m_p1_base);
-        vector<cl::Buffer> d_pp0 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_pp0, m_pp0_base);
-        vector<cl::Buffer> d_pp1 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_pp1, m_pp1_base);
-
-        vector<cl::Memory> inBufVec, outBufVec;
+        d_coefx = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_coefx);
+        d_coefy = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_coefy);
+        d_coefz = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_coefz);
+        d_srcs = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_src);
+        d_taperx = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_taperx);
+        d_tapery = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_tapery);
+        d_taperz = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_taperz);
+        d_upb = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_WRITE, *m_upb);
+        d_v2dt2 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_ONLY, l_v2dt2, m_v2dt2_base);
+        d_p0 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_p0, m_p0_base);
+        d_p1 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_p1, m_p1_base);
+        d_pp0 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_pp0, m_pp0_base);
+        d_pp1 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_pp1, m_pp1_base);
 
         inBufVec.push_back(d_coefx);
         inBufVec.push_back(d_coefy);
         inBufVec.push_back(d_coefz);
+        inBufVec.push_back(d_taperx);
+        inBufVec.push_back(d_tapery);
+        inBufVec.push_back(d_taperz);
         inBufVec.push_back(d_srcs);
-
         for (int i = 0; i < p_numChannels; i++) {
             inBufVec.push_back(d_p0[i]);
             inBufVec.push_back(d_pp0[i]);
             inBufVec.push_back(d_v2dt2[i]);
+            /**** ALU ***/
+            inBufVec.push_back(d_p1[i]);
+            inBufVec.push_back(d_pp1[i]);
 
-            if (p_sel) {
-                outBufVec.push_back(d_p0[i]);
-                outBufVec.push_back(d_pp0[i]);
-            } else {
-                outBufVec.push_back(d_p1[i]);
-                outBufVec.push_back(d_pp1[i]);
-            }
+            outBufVec.push_back(d_p0[i]);
+            outBufVec.push_back(d_pp0[i]);
+            outBufVec.push_back(d_p1[i]);
+            outBufVec.push_back(d_pp1[i]);
+            /**** ALU ***/
         }
+        outBufVec.push_back(d_upb);
 
-        int fArg = 0;
-
-        m_Kernel.setArg(fArg++, m_z);
-        m_Kernel.setArg(fArg++, m_y);
-        m_Kernel.setArg(fArg++, m_x);
-        m_Kernel.setArg(fArg++, m_time);
-        m_Kernel.setArg(fArg++, m_zb);
-        m_Kernel.setArg(fArg++, p_sy);
-        m_Kernel.setArg(fArg++, p_sx);
-        m_Kernel.setArg(fArg++, d_srcs);
-        m_Kernel.setArg(fArg++, d_coefz);
-        m_Kernel.setArg(fArg++, d_coefy);
-        m_Kernel.setArg(fArg++, d_coefx);
-        m_Kernel.setArg(fArg++, d_v2dt2[0]);
-        m_Kernel.setArg(fArg++, d_p0[0]);
-        m_Kernel.setArg(fArg++, d_p1[0]);
-        m_Kernel.setArg(fArg++, d_p0[0]);
-        m_Kernel.setArg(fArg++, d_p1[0]);
-        m_Kernel.setArg(fArg++, d_pp0[0]);
-        m_Kernel.setArg(fArg++, d_pp1[0]);
-        m_Kernel.setArg(fArg++, d_pp0[0]);
-        m_Kernel.setArg(fArg++, d_pp1[0]);
-        m_CommandQueue.finish();
-
-        m_CommandQueue.enqueueMigrateMemObjects(inBufVec, 0 /* 0 means from host*/);
-        m_CommandQueue.finish();
-
-        auto start = chrono::high_resolution_clock::now();
-        m_CommandQueue.enqueueTask(m_Kernel);
-        m_CommandQueue.finish();
-        auto finish = chrono::high_resolution_clock::now();
-        chrono::duration<double> elapsed = finish - start;
-
-        m_CommandQueue.enqueueMigrateMemObjects(outBufVec, CL_MIGRATE_MEM_OBJECT_HOST);
-        m_CommandQueue.finish();
-
-        for (int i = 0; i < p_numChannels; i++) {
-            if (p_sel) {
-                p_p.insert(p_p.end(), l_p0[i].begin(), l_p0[i].end());
-                p_pp.insert(p_pp.end(), l_pp0[i].begin(), l_pp0[i].end());
-            } else {
-                p_p.insert(p_p.end(), l_p1[i].begin(), l_p1[i].end());
-                p_pp.insert(p_pp.end(), l_pp1[i].begin(), l_pp1[i].end());
-            }
-        }
-
-        return elapsed.count();
     }
-
     /**
      * @brief run kernel, memory selection, HBC mode
      *
@@ -307,71 +227,12 @@ class ForwardKernel {
                size_t p_shot,
                size_t p_sy,
                size_t p_sx,
-               host_buffer_t<t_WideType>& p_pp,
-               host_buffer_t<t_WideType>& p_p,
-               host_buffer_t<t_DataType>& p_upb) 
+               bool saveSnaps,
+               HostBuffer_t<t_WideType>& p_pp,
+               HostBuffer_t<t_WideType>& p_p) 
     {
-        //host_buffer_t<t_DataType> p_upb(m_x * m_y * (t_Order/2) * m_time );
-        size_t l_cubeSize = m_cube / t_PEX / t_PEZ;
-        size_t p_numChannels = (t_ChannelSize - 1 + l_cubeSize) / t_ChannelSize;
-        vector<host_buffer_t<t_WideType> > l_pp0(p_numChannels);
-        vector<host_buffer_t<t_WideType> > l_pp1(p_numChannels);
-        vector<host_buffer_t<t_WideType> > l_p0(p_numChannels);
-        vector<host_buffer_t<t_WideType> > l_p1(p_numChannels);
-        vector<host_buffer_t<t_WideType> > l_v2dt2(p_numChannels);
-        for (int i = 0; i < p_numChannels; i++) {
-            size_t l_vectorSize = l_cubeSize >= t_ChannelSize ? t_ChannelSize : l_cubeSize;
-            l_cubeSize -= t_ChannelSize;
-
-            l_p0[i].resize(l_vectorSize);
-            l_p1[i].resize(l_vectorSize);
-            l_pp0[i].resize(l_vectorSize);
-            l_pp1[i].resize(l_vectorSize);
-            l_v2dt2[i].resize(l_vectorSize);
-
-            copy(m_v2dt2.begin() + i * t_ChannelSize, m_v2dt2.begin() + i * t_ChannelSize + l_vectorSize,
-                 l_v2dt2[i].begin());
-        }
         cl::Context m_Context = m_fpga->getContext();
         cl::CommandQueue m_CommandQueue = m_fpga->getCommandQueue();
-        cl::Buffer d_coefx = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_coefx);
-        cl::Buffer d_coefy = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_coefy);
-        cl::Buffer d_coefz = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_coefz);
-        cl::Buffer d_srcs = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_srcs[p_shot]);
-        cl::Buffer d_upb = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_WRITE, p_upb);
-        cl::Buffer d_taperx = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_taperx);
-        cl::Buffer d_tapery = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_tapery);
-        cl::Buffer d_taperz = m_fpga->createDeviceBuffer<t_DataType>(CL_MEM_READ_ONLY, m_taperz);
-        vector<cl::Buffer> d_v2dt2 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_ONLY, l_v2dt2, m_v2dt2_base);
-        vector<cl::Buffer> d_p0 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_p0, m_p0_base);
-        vector<cl::Buffer> d_p1 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_p1, m_p1_base);
-        vector<cl::Buffer> d_pp0 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_pp0, m_pp0_base);
-        vector<cl::Buffer> d_pp1 = m_fpga->createDeviceBuffer<t_WideType>(CL_MEM_READ_WRITE, l_pp1, m_pp1_base);
-        vector<cl::Memory> inBufVec, outBufVec;
-        inBufVec.push_back(d_coefx);
-        inBufVec.push_back(d_coefy);
-        inBufVec.push_back(d_coefz);
-        inBufVec.push_back(d_taperx);
-        inBufVec.push_back(d_tapery);
-        inBufVec.push_back(d_taperz);
-        inBufVec.push_back(d_srcs);
-        for (int i = 0; i < p_numChannels; i++) {
-            inBufVec.push_back(d_p0[i]);
-            inBufVec.push_back(d_pp0[i]);
-            inBufVec.push_back(d_v2dt2[i]);
-            /**** ALU ***/
-            inBufVec.push_back(d_p1[i]);
-            inBufVec.push_back(d_pp1[i]);
-            /**** ALU ***/
-            if (p_sel) {
-                outBufVec.push_back(d_p0[i]);
-                outBufVec.push_back(d_pp0[i]);
-            } else {
-                outBufVec.push_back(d_p1[i]);
-                outBufVec.push_back(d_pp1[i]);
-            }
-        }
-        outBufVec.push_back(d_upb);
         int fArg = 0;
         m_Kernel.setArg(fArg++, static_cast<uint32_t>(m_z));
         m_Kernel.setArg(fArg++, static_cast<uint32_t>(m_y));
@@ -398,6 +259,7 @@ class ForwardKernel {
         m_Kernel.setArg(fArg++, d_pp1[0]);
         m_Kernel.setArg(fArg++, d_upb);
         m_CommandQueue.finish();
+
         m_CommandQueue.enqueueMigrateMemObjects(inBufVec, 0 /* 0 means from host*/);
         m_CommandQueue.finish();
         auto start = chrono::high_resolution_clock::now();
@@ -407,17 +269,53 @@ class ForwardKernel {
         chrono::duration<double> elapsed = finish - start;
         m_CommandQueue.enqueueMigrateMemObjects(outBufVec, CL_MIGRATE_MEM_OBJECT_HOST);
         m_CommandQueue.finish();
-        for (int i = 0; i < p_numChannels; i++) {
-            if (p_sel) {
-                p_p.insert(p_p.end(), l_p0[i].begin(), l_p0[i].end());
-                p_pp.insert(p_pp.end(), l_pp0[i].begin(), l_pp0[i].end());
-            } else {
-                p_p.insert(p_p.end(), l_p1[i].begin(), l_p1[i].end());
-                p_pp.insert(p_pp.end(), l_pp1[i].begin(), l_pp1[i].end());
+        if(saveSnaps){
+            for (int i = 0; i < p_numChannels; i++) {
+                if (p_sel) {
+                    p_p.insert(p_p.end(), l_p0[i].begin(), l_p0[i].end());
+                    p_pp.insert(p_pp.end(), l_pp0[i].begin(), l_pp0[i].end());
+                } else {
+                    p_p.insert(p_p.end(), l_p1[i].begin(), l_p1[i].end());
+                    p_pp.insert(p_pp.end(), l_pp1[i].begin(), l_pp1[i].end());
+                }
             }
         }
-        //p_upb = std::move(p_upb);
         return elapsed.count();
+    }
+
+    double runModeling(const bool p_sel,
+               size_t p_shot,
+               size_t p_sy,
+               size_t p_sx) 
+    {
+        HostBuffer_t<t_WideType>p_pp;
+        HostBuffer_t<t_WideType>p_p;
+        return run(p_sel, p_shot, p_sy, p_sx, false, p_pp, p_p);
+    }
+
+    HostBuffer_t<t_DataType> & getUPBBuffer()
+    {
+        return *m_upb;
+    }
+
+    void setTaper(HostBuffer_t<t_DataType> &tp){
+        m_taperx.assign(tp.begin(), tp.end());
+        m_tapery.assign(tp.begin(), tp.end());
+        m_taperz.assign(tp.begin(), tp.end());
+    }
+    void setCoefs(HostBuffer_t<t_DataType> &cx, 
+        HostBuffer_t<t_DataType> &cy, 
+        HostBuffer_t<t_DataType> &cz)
+    {   
+        m_coefx.assign(cx.begin(), cx.end());
+        m_coefy.assign(cy.begin(), cy.end());
+        m_coefz.assign(cz.begin(), cz.end());
+    }
+    void setSourceFunction(HostBuffer_t<t_DataType> & src){
+        m_src.assign(src.begin(), src.end());
+    }
+    void setV2Dt2(HostBuffer_t<t_DataType> & p_v2dt2){
+        converter<t_PEX, t_PEZ>(m_x, m_y, m_z, p_v2dt2, m_v2dt2.data());
     }
 
    private:
@@ -432,11 +330,39 @@ class ForwardKernel {
     size_t m_p0_base;
     size_t m_p1_base;
 
-    vector<host_buffer_t<t_DataType> > m_srcs;
 
-    host_buffer_t<t_DataType> m_taperx, m_tapery, m_taperz;
-    host_buffer_t<t_WideType> m_v2dt2;
-    host_buffer_t<t_DataType> m_coefx, m_coefy, m_coefz;
+    HostBuffer_t<t_WideType> m_v2dt2;
+    HostBuffer_t<t_DataType> m_taperx, m_tapery, m_taperz;
+    HostBuffer_t<t_DataType> m_coefx, m_coefy, m_coefz;
+    HostBuffer_t<t_DataType> m_src;
+    HostBuffer_t<t_DataType> *m_upb ;
+
+    size_t l_cubeSize;
+    size_t p_numChannels;
+
+    
+    vector<HostBuffer_t<t_WideType> >l_pp0;
+    vector<HostBuffer_t<t_WideType> >l_pp1;
+    vector<HostBuffer_t<t_WideType> >l_p0;
+    vector<HostBuffer_t<t_WideType> >l_p1;
+    vector<HostBuffer_t<t_WideType> >l_v2dt2;
+
+    vector<cl::Memory> inBufVec, outBufVec;
+
+    cl::Buffer d_coefx;
+    cl::Buffer d_coefy;
+    cl::Buffer d_coefz;
+    cl::Buffer d_srcs;
+    cl::Buffer d_upb;
+    cl::Buffer d_taperx;
+    cl::Buffer d_tapery;
+    cl::Buffer d_taperz;
+    vector<cl::Buffer> d_v2dt2;
+    vector<cl::Buffer> d_p0;
+    vector<cl::Buffer> d_p1;
+    vector<cl::Buffer> d_pp0;
+    vector<cl::Buffer> d_pp1;
+
 };
 
 #endif

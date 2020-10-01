@@ -10,7 +10,7 @@ acc=$1 # accelerator [gpu|fpga|off]
 fi
 
 if [ "$#" -gt 1 ]; then
-buildclean=$2 # accelerator [gpu|fpga|off]
+buildclean=$2 # clean build
 fi
 
 echo "> Building Host Program..."
@@ -27,6 +27,7 @@ if [ -f "$binfile" ]; then
     mkdir -p $rootdir/bin
     mv $binfile $rootdir/bin
 else
+
     cp build/build.log $rootdir
 fi
 cd $rootdir 

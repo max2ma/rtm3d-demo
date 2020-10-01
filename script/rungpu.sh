@@ -18,12 +18,18 @@ inputJson=$1
 build=$2
 binfile=bin/RTM3D_GPU.bin
 #build host
-if [ "$build" =  "y" ]; then
+if [ "$build" = "y" -o "$build" = "Y" ]; then
     rm $binfile > /dev/null 2>&1
-	$rootdir/script/buildhost.sh "gpu" "$build"
+    if [ "$build" = "Y" ]; then
+        # clean build
+	    $rootdir/script/buildhost.sh "gpu" "y"
+    else
+        # just build
+        $rootdir/script/buildhost.sh "gpu" "n"
+    fi
 	if [ ! -f "$binfile" ]; then
 	    exit 1
-	fi
+	fi   
 fi
  
 ./$binfile $inputJson

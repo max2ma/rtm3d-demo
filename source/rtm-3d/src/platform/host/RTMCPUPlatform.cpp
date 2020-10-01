@@ -371,7 +371,7 @@ void RTMCPUPlatform::rtmStep3D(RTMCube<RTMData_t, RTMDevPtr_t> *PGrid, RTMCube<R
                 RTMData_t npp = 2 * p - pp + (v2dt2)*lapl;
                 PPGrid->setByOffset(pOffset, npp);
                 pOffset++;
-                if (npp != npp || p != p || pp != pp || lapl != lapl /*|| abs(npp) > 10*/)
+                if (npp != npp || p != p || pp != pp || lapl != lapl)
                 {
                     char msg[1024];
                     sprintf(msg, "\n*******************************************************\n");

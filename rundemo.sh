@@ -2,7 +2,7 @@
 
 help(){
     echo "> Usage: rundemo.sh < target platform > "
-    echo "> rundemo.sh --target=<fpga|gpu|cpu> --json=<input.json> --build=<Y|n>"
+    echo "> rundemo.sh --target=<fpga|gpu|cpu> --json=<input.json> --build=<y=build|Y=clean and build|n= don't build>"
     exit 1
 }
 

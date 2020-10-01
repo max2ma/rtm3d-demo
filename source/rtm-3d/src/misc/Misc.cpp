@@ -6,6 +6,7 @@
 #include<Misc.hpp>
 
 #include <chrono>
+#include <vector>
 
 using namespace std;
 
@@ -188,3 +189,15 @@ void TO_LOWER(string &data){
 		c = ::tolower(c);
 	});
 }
+
+
+
+template <>
+HostBuffer_t<float> & SLICE(HostBuffer_t<float> &v, int m, int n)
+{
+	auto first = v.cbegin() + m;
+	auto last = v.cbegin() + n + 1;
+	HostBuffer_t<float> * vec = new HostBuffer_t<float>(first, last);
+	return *vec;
+}
+

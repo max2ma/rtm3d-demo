@@ -1,5 +1,8 @@
 #include <iostream>
-#include <vector>
+#include<vector> // for vector 
+#include<algorithm> // for copy() and assign() 
+#include<iterator> // for back_inserter 
+#include <Misc.hpp>
 #include <RTM.hpp>
 
 using namespace std;
@@ -51,33 +54,33 @@ void RTMCube<RTMData_t, RTMDevPtr_t>::extendBorders(uint32_t blength)
     this->setMaxMin(); // sets max and min values before extendind
     
     size_t ix, iy, iz, kx, ky, kz;
-    size_t nxe = getNX() + 2 * blen;
-    size_t nye = getNY() + 2 * blen;
-    size_t nze = getNZ() + 2 * blen;
-    size_t length = nxe*nye*nze;
-    RTMData_t *newgrid = allocGrid(length);
-    std:memset(reinterpret_cast<void*>(newgrid), 0, length*sizeof(RTMData_t));
-    //#pragma omp parallel for private(ix,iy,iz, kx, ky, kz) collapse(3)
+    size_t nx = getNX();
+    size_t ny = getNY();
+    size_t nz = getNZ();
+    size_t nxe = nx + 2 * blen;
+    size_t nye = ny + 2 * blen;
+    size_t nze = nz + 2 * blen;
+    HostBuffer_t<RTMData_t> tmpGrid;
+    copy(getGridBuffer().begin(), getGridBuffer().end(), back_inserter(tmpGrid));
+    
+    
+    size_t new_length = nxe*nye*nze;
+    resize(nxe, nye, nze);
     for (ix = blen, kx = 0; ix < nxe - blen; ix++, kx++)
     {
         for (iy = blen, ky = 0; iy < nye - blen; iy++, ky++)
         {
             for (iz = blen, kz = 0; iz < nze - blen; iz++, kz++)
             {
-                size_t offset0, offset1;
-                offset0 = ix * (nye * nze) + iy * (nze) + iz; /*getOffset(ix, iy, iz);*/
-                offset1 = getOffset(kx, ky, kz);
-                newgrid[offset0] = grid[offset1];
+                size_t offset_old;
+                offset_old = kx*(ny*nz)+ (ky*nz) + kz;
+                set(tmpGrid.at(offset_old), ix, iy, iz);
             }
         }
     }
-    //delete grid;
-    destroyGrid();
-    grid = newgrid;
     setNX(nxe);
     setNY(nye);
     setNZ(nze);
-    gridSize = nxe * nye * nze;
     // update device grid host pointer and length
     updateHostPtr();
 }
@@ -87,13 +90,17 @@ void RTMCube<RTMData_t, RTMDevPtr_t>::removeBorders(uint32_t blength)
 {
     
     size_t ix, iy, iz, kx, ky, kz;
+    size_t nx = getNX();
+    size_t ny = getNY();
+    size_t nz = getNZ();
     size_t nxr = getNX() - 2*blength;
     size_t nyr = getNY() - 2*blength;
     size_t nzr = getNZ() - 2*blength;
-    size_t length = nxr*nyr*nzr;
-    RTMData_t *newgrid = allocGrid(length);
-
-    //#pragma omp parallel for private(ix,iy,iz, kx, ky, kz) collapse(3)
+    HostBuffer_t<RTMData_t> tmpGrid;
+    copy(getGridBuffer().begin(), getGridBuffer().end(), back_inserter(tmpGrid));
+    
+    size_t new_length = nxr*nyr*nzr;
+    resize(nxr, nyr, nzr);
     for (ix = 0, kx = blength; ix < nxr; ix++, kx++)
     {
         for (iy = 0, ky = blength; iy < nyr; iy++, ky++)
@@ -101,21 +108,17 @@ void RTMCube<RTMData_t, RTMDevPtr_t>::removeBorders(uint32_t blength)
             for (iz = 0, kz = blength; iz < nzr; iz++, kz++)
             {
                 size_t offset0;
-                offset0 = (ix * (nyr * nzr)) + (iy * (nzr)) + iz;
-                newgrid[offset0] = get(kx,ky,kz);
+                offset0 = (kx * (ny * nz)) + (ky * (nz)) + kz;
+                set(tmpGrid.at(offset0), ix, iy, iz);
             }
         }
     }
-    //delete grid;
-    destroyGrid();
 
     blen = blen - blength;
     if(blen < 0 ) blen=0;
-    grid = newgrid;
     setNX(nxr);
     setNY(nyr);
     setNZ(nzr);
-    gridSize = nxr * nyr * nzr;
     setMaxMin(); // sets max and min values after removing
 
     // update device grid host pointer and length
@@ -186,7 +189,7 @@ void RTMCube<RTMData_t, RTMDevPtr_t>::filter(RTMStencil<RTMData_t,RTMDevPtr_t, R
     size_t st_order = _kernel.getOrder();
     size_t half_order = st_order / 2;
     size_t length = getNX()*getNY()*getNZ();
-    RTMData_t *gauss = allocGrid(length);
+    RTMData_t *gauss = new RTMData_t[length];
     if (getNX()==1)
     { // 2D scenario
         #pragma omp parallel for private(iy, iz) collapse(2)
@@ -253,7 +256,7 @@ void RTMCube<RTMData_t, RTMDevPtr_t>::filter(RTMStencil<RTMData_t,RTMDevPtr_t, R
             }
         }
     }
-    destroyGrid(gauss);
+    delete gauss;
 }
 
 template <>

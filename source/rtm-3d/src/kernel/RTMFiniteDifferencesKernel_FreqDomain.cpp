@@ -181,7 +181,7 @@ void RTMFreqDomainKernel::destroyKernel()
     if (freqDomainKernelInitialized)
     {
         RTMFiniteDifferencesKernel::destroyKernel();
-        platform->destroyRTMPlatform();
+        defaultPlatform->destroyRTMPlatform();
         if (srcReGrid != nullptr)
             delete srcReGrid;
         if (srcImGrid != nullptr)
@@ -297,19 +297,19 @@ void RTMFreqDomainKernel::rtmFreqDomainPropagation(RTMShotDescriptor<RTMData_t, 
                 report->propagFuncCounter++;
 
                 // apply source
-                platform->rtmApplySource(ppSrcGrid, shotDescriptor.getSource(), st);
+                defaultPlatform->rtmApplySource(ppSrcGrid, shotDescriptor.getSource(), st);
 
                 // restore receiver energy
-                platform->rtmRestoreReceiverData(ppRcvGrid, rcvGrid, lt);
+                defaultPlatform->rtmRestoreReceiverData(ppRcvGrid, rcvGrid, lt);
 
                 // update all freqs. contribution
                 for (lw = 0, iw = gw; (lw < nwstep && iw < nw); lw++, iw++)
                 {
                     t2 = tic();
-                    platform->rtmUpdateFreqContributions(st, iw, lw, ppSrcGrid, ppRcvGrid,
+                    defaultPlatform->rtmUpdateFreqContributions(st, iw, lw, ppSrcGrid, ppRcvGrid,
                                                          srcReGrid, srcImGrid, rcvReGrid, rcvImGrid, kernelRe, kernelIm);
                     // freq domain image condition
-                    platform->rtmFreqDomainImageCondition(iw, lw, wList,
+                    defaultPlatform->rtmFreqDomainImageCondition(iw, lw, wList,
                                                           imgGrid, srcReGrid, srcImGrid, rcvReGrid, rcvImGrid);
                     //printf(">> Lw[%d]: %.5f ms \n", lw, elapsed_ms(t2, toc()) );
                 }
@@ -359,13 +359,13 @@ void RTMFreqDomainKernel::rtmFreqDomainPropagation(RTMShotDescriptor<RTMData_t, 
 void RTMFreqDomainKernel::rtmUpdatePressureGrids(RTMVelocityModel<RTMData_t, RTMDevPtr_t> &v2dt2Grid)
 {
     // propagate wave for one timestep (t+dt)
-    platform->rtmStepMultipleWave(pSrcGrid, ppSrcGrid, pRcvGrid, ppRcvGrid, stencil, v2dt2Grid);
+    defaultPlatform->rtmStepMultipleWave(pSrcGrid, ppSrcGrid, pRcvGrid, ppRcvGrid, stencil, v2dt2Grid);
 
     // attenuate borders
-    platform->rtmTaperAllBorders(pSrcGrid, rtmTaper);
-    platform->rtmTaperAllBorders(ppSrcGrid, rtmTaper);
-    platform->rtmTaperAllBorders(pRcvGrid, rtmTaper);
-    platform->rtmTaperAllBorders(ppRcvGrid, rtmTaper);
+    defaultPlatform->rtmTaperAllBorders(pSrcGrid, rtmTaper);
+    defaultPlatform->rtmTaperAllBorders(ppSrcGrid, rtmTaper);
+    defaultPlatform->rtmTaperAllBorders(pRcvGrid, rtmTaper);
+    defaultPlatform->rtmTaperAllBorders(ppRcvGrid, rtmTaper);
 }
 
 void RTMFreqDomainKernel::setDistributedImagingLimits()

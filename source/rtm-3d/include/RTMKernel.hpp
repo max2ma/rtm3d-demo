@@ -126,7 +126,7 @@ protected:
     RTMParam *rtmParam; ///< pointer to RTMParam
     RTMKernelReport *report; ///< pointer to RTMKernelReport
     RTMKernelState KERNEL_STATE; ///< 0 = IDLE; 1 = FWD; 2=BwD
-    RTMPlatform<RTMData_t, RTMDevPtr_t> * platform;
+    RTMPlatform<RTMData_t, RTMDevPtr_t> * defaultPlatform;
     RTMAccPlatform * accPlatform;
     RTMCPUPlatform * cpuPlatform;
     bool usingAcc;
@@ -147,11 +147,11 @@ public:
 
     void setAccPlatform(){
         usingAcc = true;
-        platform = accPlatform;
+        defaultPlatform = accPlatform;
     }
     void setCpuPlatform(){
         usingAcc = false;
-        platform = cpuPlatform;
+        defaultPlatform = cpuPlatform;
     }
     bool isUsingAcc(){
         return usingAcc;

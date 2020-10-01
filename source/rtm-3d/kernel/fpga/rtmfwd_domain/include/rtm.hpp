@@ -282,7 +282,8 @@ class RTM3D : public Stencil3D<t_DataType, t_Order, t_MaxDimZ, t_MaxDimY, t_PE> 
                  hls::stream<t_InType>& p_v2dt2,
                  hls::stream<t_InType>& p_vt,
                  hls::stream<t_PairInType>& p_p0,
-                 hls::stream<t_PairInType>& p_p1) {
+                 hls::stream<t_PairInType>& p_p1) 
+    {
 #pragma HLS DATAFLOW
         hls::stream<t_PairInType> l_p0, l_p1, l_upb;
         taper(p_p0, l_p0);

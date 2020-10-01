@@ -26,7 +26,7 @@ void RTMRBCKernel::initKernel()
 void RTMRBCKernel::destroyKernel()
 {
     RTMFiniteDifferencesKernel::destroyKernel();
-    platform->destroyRTMPlatform();
+    defaultPlatform->destroyRTMPlatform();
 }
 
 /** 
@@ -37,17 +37,11 @@ void RTMRBCKernel::rtmMigrate(RTMShotDescriptor<RTMData_t, RTMDevPtr_t> &shotDes
                               RTMVelocityModel<RTMData_t, RTMDevPtr_t> &v2dt2Grid)
 {
     timepoint t0 = tic();
-    KERNEL_STATE = RTMKernelState::RTM_KERNEL_STATE_FORWARD;
 #ifdef RTM_ACC_FPGA
-    timepoint fwd_st=tic();
-    RTMFPGAPlatform * fpgaPlatform = dynamic_cast<RTMFPGAPlatform *>(platform);
-    fpgaPlatform->rtmForwardPropagation(&shotDescriptor, stencil, rtmTaper, 
-    v2dt2Grid, snap0, snap1);
-    report->rtmForwardTime += elapsed_s(fwd_st, toc());
-    report->rtmForwardCounter++;
-#else
-    rtmRBCForward(shotDescriptor, v2dt2Grid);
+    setCpuPlatform();
 #endif
+    KERNEL_STATE = RTMKernelState::RTM_KERNEL_STATE_FORWARD;
+    rtmRBCForward(shotDescriptor, v2dt2Grid);
     KERNEL_STATE = RTMKernelState::RTM_KERNEL_STATE_BACKWARD;
     rtmRBCBackward(shotDescriptor, v2dt2Grid);
     KERNEL_STATE = RTMKernelState::RTM_KERNEL_STATE_IDLE;
@@ -111,14 +105,14 @@ void RTMRBCKernel::rtmRBCForward(RTMShotDescriptor<RTMData_t, RTMDevPtr_t> &shot
 
             // propagate wave for one timestep (t+dt)
             timepoint t2 = tic();
-            platform->rtmStep(pSrcGrid, ppSrcGrid, stencil, v2dt2Grid);
+            defaultPlatform->rtmStep(pSrcGrid, ppSrcGrid, stencil, v2dt2Grid);
             
             // update propagation function time report
             report->propagFuncTime += elapsed_s(t2, toc());
             report->propagFuncCounter++;
 
             // apply source
-            platform->rtmApplySource(ppSrcGrid, shotDescriptor.getSource(), it);
+            defaultPlatform->rtmApplySource(ppSrcGrid, shotDescriptor.getSource(), it);
             
             // update snapshots file
             if (rtmParam->save_snapshots && (it % rtmParam->snapshot_step) == 0)
@@ -225,7 +219,7 @@ void RTMRBCKernel::rtmRBCBackward(RTMShotDescriptor<RTMData_t, RTMDevPtr_t> &sho
             }else{
                 // propagate source wave for one timestep (t+dt)
                 t1 = tic();
-                platform->rtmStep(pSrcGrid, ppSrcGrid, stencil, v2dt2Grid);
+                defaultPlatform->rtmStep(pSrcGrid, ppSrcGrid, stencil, v2dt2Grid);
             
                 // update propagation function time report
                 report->propagFuncTime += elapsed_s(t1, toc());
@@ -236,17 +230,17 @@ void RTMRBCKernel::rtmRBCBackward(RTMShotDescriptor<RTMData_t, RTMDevPtr_t> &sho
             
             // propagate receiver wave for one timestep (t-dt)
             t1 = tic();
-            platform->rtmStep(pRcvGrid, ppRcvGrid, stencil, v2dt2Grid);
+            defaultPlatform->rtmStep(pRcvGrid, ppRcvGrid, stencil, v2dt2Grid);
 
             // update propagation function time report
             report->propagFuncTime += elapsed_s(t1, toc());
             report->propagFuncCounter++;
 		
             // restore receiver energy
-            platform->rtmRestoreReceiverData(ppRcvGrid, rcvGrid, lt);
+            defaultPlatform->rtmRestoreReceiverData(ppRcvGrid, rcvGrid, lt);
 			
             // apply image condition */
-            platform->rtmImageCondition(imgGrid,pSrcGrid,ppRcvGrid);
+            defaultPlatform->rtmImageCondition(imgGrid,pSrcGrid,ppRcvGrid);
 
             // update snapshots file
             if (rtmParam->save_snapshots && (it % rtmParam->snapshot_step) == 0)

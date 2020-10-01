@@ -41,12 +41,12 @@ void RTMController::loadRTMVelocitiesModel(){
         }
         rtmVelModel = new RTMVelocityModel<RTMData_t,RTMDevPtr_t>(rtmParam->nx, rtmParam->ny, rtmParam->nz,
                                                         rtmParam->mname, rtmParam->vpfile);
+
         // extend velocities grid
         RTM_PRINT("Extending '"+ rtmParam->mname +"' borders (blen=" 
         + to_string(rtmParam->blen) + ")", rtmParam->verbose);
         rtmVelModel->extendBorders(rtmParam->blen);
 
-        
         RTMBoundaryCondition bc;
         if (rtmParam->modeling)
         {
@@ -98,7 +98,7 @@ void RTMController::loadRTMVelocitiesModel(){
              * with larger models when not running
              * distributed grid controllers.
              * */
-            v2dt2SubGrid =rtmVelModel;
+            v2dt2SubGrid = rtmVelModel;
         }else if(processLimits.validProcessArea){
             RTM_PRINT("Creating V2DT2 subgrid..." , rtmParam->verbose);
             RTMCube<RTMData_t, RTMDevPtr_t> * velSubGrid = rtmVelModel->getSubGrid(stX, eX, stY, eY, stZ, eZ);

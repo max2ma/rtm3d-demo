@@ -19,6 +19,12 @@ sdaflow="hw"
 source $XILINX_XRT/setup.sh > /dev/null 2>&1
 # sdaflow="sw_emu"
 
+rootdir=`pwd`
+if [ ! -d "$rootdir/script" ]; then
+    echo ">> Missing 'script/' dir! Must run perf test from root folder. "
+    exit 1
+fi
+
 if [ "$#" -lt 2 ]; then
     echo "Usage: "
     echo "> ./runfpga.sh input.json build_flag [kernel.xclbin]"
@@ -36,12 +42,18 @@ fi
 
 binfile=bin/RTM3D_FPGA.bin
 #build host
-if [ "$build" = "y" ]; then
+if [ "$build" = "y" -o "$build" = "Y" ]; then
     rm $binfile > /dev/null 2>&1
-    ./script/buildhost.sh "fpga" "$build"
-    if [ ! -f "$binfile" ]; then
-        exit 1
+    if [ "$build" = "Y" ]; then
+        # clean build
+	    $rootdir/script/buildhost.sh "fpga" "y"
+    else
+        # just build
+        $rootdir/script/buildhost.sh "fpga" "n"
     fi
+	if [ ! -f "$binfile" ]; then
+	    exit 1
+	fi   
 fi
 
 # run

@@ -69,11 +69,16 @@ public: // constructors
 
 public:
     /* fpga specific functions */
+    void rtmSeismicModeling(RTMShotDescriptor<RTMData_t, RTMDevPtr_t> * shotDescriptor,
+        RTMStencil<RTMData_t,RTMDevPtr_t> *stencil,
+        RTMTaperFunction<RTMData_t,RTMDevPtr_t> *rtmTaper,
+        RTMVelocityModel<RTMData_t,RTMDevPtr_t> &v2dt2Grid);
+    
     void rtmForwardPropagation(
         RTMShotDescriptor<RTMData_t, RTMDevPtr_t> * shotDescriptor,
         RTMStencil<RTMData_t,RTMDevPtr_t> *stencil,
         RTMTaperFunction<RTMData_t,RTMDevPtr_t> *rtmTaper,
-        const RTMVelocityModel<RTMData_t,RTMDevPtr_t> &v2dt2Grid,
+        RTMVelocityModel<RTMData_t,RTMDevPtr_t> &v2dt2Grid,
         RTMCube<RTMData_t, RTMDevPtr_t> *snap0Grid,
         RTMCube<RTMData_t, RTMDevPtr_t> *snap1Grid, 
         RTMGridCollection<RTMData_t,RTMDevPtr_t> *upbGrid);

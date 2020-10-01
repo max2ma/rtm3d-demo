@@ -192,13 +192,27 @@ public:
         if(nDim>=3) dimSizes[2] = ny;
         if(nDim>=4) dimSizes[3] = nz;
         size_t len = nt*nx*ny*nz;
-        DefaultDeviceGrid<GridData_type, DevPtr_type>::HOST_PTR = Grid<GridData_type>::grid;
+        DefaultDeviceGrid<GridData_type, DevPtr_type>::HOST_PTR = Grid<GridData_type>::data();
         DefaultDeviceGrid<GridData_type, DevPtr_type>::BUFFER_LENGTH = len*sizeof(GridData_type);
     }
     void reset(){
         Grid<GridData_type>::fill(0.0);
         DefaultDeviceGrid<GridData_type, DevPtr_type>::devMemSet(0.0);
     }
+
+    void resize(size_t k0, size_t k1=0, size_t k2=0, size_t k3=0){
+
+        size_t newsize = 1;
+        if (k0!=0) {newsize*=k0; dimSizes[0] = k0;}
+        if (k1!=0) {newsize*=k1; dimSizes[1] = k1;}
+        if (k2!=0) {newsize*=k2; dimSizes[2] = k2;};
+        if (k3!=0) {newsize*=k3; dimSizes[3] = k3;};
+
+        if (k0!=0){
+            Grid<GridData_type>::resizeGrid(newsize);
+        }
+    }
+
 
     size_t getOffset(size_t k0, size_t k1=0, size_t k2=0, size_t k3=0){
         size_t offset = (k0*dimSizes[3]*dimSizes[2]*dimSizes[1]) + 
@@ -218,7 +232,7 @@ public:
     }
     void updateHostPtr()
     {   
-        DefaultDeviceGrid<GridData_type, DevPtr_type>::HOST_PTR = Grid<GridData_type>::grid;
+        DefaultDeviceGrid<GridData_type, DevPtr_type>::HOST_PTR = Grid<GridData_type>::data();
         DefaultDeviceGrid<GridData_type, DevPtr_type>::BUFFER_LENGTH = Grid<GridData_type>::gridSize*sizeof(GridData_type); 
     }
     size_t getNX(){
@@ -439,6 +453,14 @@ public:
             arr[k] = getStencilCoef(dim, k);
         }
         return arr;
+    }
+    RTMVector<GridData_type, DevPtr_type> & getStencilCoefVector(RTMDim dim){
+        RTMVector<GridData_type, DevPtr_type> * arr = new RTMVector<GridData_type, DevPtr_type>(stencilOrder + 1);
+        int k;
+        for (k=0; k<(stencilOrder + 1); k++){
+            arr->set(getStencilCoef(dim, k), k);
+        }
+        return *arr;
     }
 
     RTMFilterKernel<GridData_type, DevPtr_type> & getKernel(){return *kernel;}
