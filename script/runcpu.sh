@@ -33,4 +33,5 @@ fi
 
 # run
 export OMP_NUM_THREADS=72
+echo "> ./$binfile $inputJson"
 ./$binfile $inputJson

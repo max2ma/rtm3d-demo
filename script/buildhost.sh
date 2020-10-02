@@ -21,6 +21,7 @@ if [ ! -f "$srcroot/build.sh" ]; then
 fi
 cd $srcroot
 rm *.bin > /dev/null 2>&1
+rm $rootdir/build.log > /dev/null 2>&1
 ./build.sh --clean=$buildclean --target=host --mpi=off --acc=$acc --define="$buildmacros"
 binfile=`ls *.bin`
 if [ -f "$binfile" ]; then

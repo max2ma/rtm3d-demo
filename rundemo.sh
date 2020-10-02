@@ -75,16 +75,16 @@ create_modelfolders $jsonPath
 
 if [ "$target" = "gpu" ];then
     runscript="script/rungpu.sh"
-    ./$runscript $jsonPath $build
+    ./$runscript $jsonPath $build $outdir_log
 elif [ "$target" = "fpga" ];then
     runscript="script/runfpga.sh"
     if [ "$fpgakernel" != "" ]; then
-       ./$runscript $jsonPath $build $fpgakernel
+      ./$runscript $jsonPath $build $outdir_log $fpgakernel
     else
-        ./$runscript $jsonPath $build
+      ./$runscript $jsonPath $build $outdir_log
     fi
 else
     runscript="script/runcpu.sh"
-    ./$runscript $jsonPath $build
+    ./$runscript $jsonPath $build $outdir_log
 fi
 
