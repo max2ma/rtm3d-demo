@@ -37,7 +37,8 @@ fi
 inputJson=$1
 build=$2
 reportdir=$3
-kernel="kernel/$sdaflow/rtmforward_maxY128_maxZ512_b16_nPEZ4_nPEX2_nFSM2.xclbin"
+#kernel="kernel/$sdaflow/rtmforward_maxY128_maxZ512_b16_nPEZ4_nPEX2_nFSM2.xclbin"
+kernel="kernel/$sdaflow/rtmforward_maxY32_maxZ64_b16_nPEZ2_nPEX2_nFSM4.xclbin"
 if [ "$#" -eq 4 ]; then
     kernel=$4
 fi
