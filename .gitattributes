@@ -6,3 +6,4 @@
 *.bin filter=lfs diff=lfs merge=lfs -text
 *.ad filter=lfs diff=lfs merge=lfs -text
 rtm3d-demo-data.tar.xz filter=lfs diff=lfs merge=lfs -text
+rtm3d-demo-data.tar.gz filter=lfs diff=lfs merge=lfs -text

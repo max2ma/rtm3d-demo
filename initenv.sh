@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #daturl="https://drive.google.com/file/d/1Ka-mo9sGddU6n7yQBLeTYppt9TtzJ-BA/view?usp=sharing"
-datfile="rtm3d-demo-data.tar.xz"
+datfile="rtm3d-demo-data.tar.gz"
 datdir="data"
 echo "> Initializing DEMO environment..."
 echo "> Downloading demonstration data package..."

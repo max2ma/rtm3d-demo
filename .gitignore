@@ -4,8 +4,6 @@ build/
 velmodels/
 .vscode/
 *.log
-*.tar.gz
-*.gz
 *.7z
 *.zip
 *.bin
