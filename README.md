@@ -106,7 +106,7 @@ To run a migration test for the same model, just provide the input_mig.json file
 
 This will generate an output RTM image in "data/output/SEG-EAGE-214x214x210/output-hbc/RTMIMG_SEGSALT-RESAMPLED-3D_NS1_NXNYNZ_214x214x210_NT2368.bin.NP1". To visualize the RTM image use the "nplot.sh" command as before:
 
-> ./nplot.sh data/output/SEG-EAGE-214x214x210/output-hbc/RTMIMG_SEGSALT-RESAMPLED-3D_NS1_NXNYNZ_214x214x210_NT2368.bin.NP1 214 214 210
+> ./nplot.sh data/output/SEG-EAGE-214x214x210/output-hbc/RTMIMG_SEGSALT-RESAMPLE-3D_NS1_NXNYNZ_214x214x210_NT2368.bin.NP1 214 214 210
 
 
 ## Quick Performance Comparison: FPGAxGPU
